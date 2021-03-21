@@ -1,0 +1,78 @@
+---
+title: "Breast cancer prediction"
+subtitle: "Shiny Application and Reproducible Pitch"
+author: "huangwenxuan"
+date: "3/21/2021"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Overview
+
+Breast Cancer is quite common, but if diagnosed early enough, it can be treated well.
+the prognosis of five-year survival rate if 85% (US, UK).
+
+[shinyapps](https://venson.shinyapps.io/Breastcancer/?_ga=2.127263309.1540024655.1616291699-1834144672.1616291699)
+The diagnosis of Breast Cancer is the key.
+
+1. For the accuracy of the prediction, we use random forest to build our prediction model.
+2. We choose to use use [Breast Cancer Coimbra Data Set](https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Coimbra) from [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/index.php) to train .
+3. We will split the data set into training and testing subset to train and test the model accuracy.
+After training the model, we use the testing data to test the accuracy of the model.
+
+## Meachine Learing
+
+Use `multi_cutpointr` from `cutpointr` to find the most effective predictors.
+
+```{r cars, echo = FALSE, message=FALSE}
+options(width = 60)
+library(caret)
+library(cutpointr)
+library(dplyr)
+library(e1071)
+file_url <- "https://archive.ics.uci.edu/ml/machine-learning-databases/00451/dataR2.csv"
+file_path <- "dataR2.csv"
+if (!file.exists(file_path)) {
+  download.file(file_url, destfile = file_path)
+}
+  breast <- read.csv(file_path)
+set.seed(123123)
+in_train <- createDataPartition(y = breast$Classification, p = 0.7, list = FALSE)
+training <- breast[in_train, ]
+testing <- breast[-in_train,]
+auc <- select(multi_cutpointr(data = breast, class = "Classification"), AUC, predictor, acc)
+auc[order(auc$AUC, decreasing = TRUE),]
+```
+we select the top 6 predictor to build the model, Which are Glucose ,Resistin ,HOMA, Insulin, BMI and Age.
+
+## Model Accuracy
+
+```{r}
+# random forest model
+t_control <- trainControl(method = "repeatedcv", number =5, repeats = 15)
+set.seed(345)
+rffit <- train(factor(Classification) ~ Glucose + Resistin + HOMA + Insulin + BMI + Age ,data = training, method = "rf",ntrees = 15,  trControl = t_control)
+# predict
+pred <- predict(rffit, newdata = testing)
+# predict
+confu <- confusionMatrix(pred, factor(testing$Classification))
+confu$overall
+```
+
+The Accuracy is `r round(confu$overall[1],4)` , the p-Value is `r round(confu$overall[6],7)`, Which is totally acceptable.
+That means the result of the prediction is trustworthy.
+
+
+
+## Recommedation
+
+1. If the prediction is "Healthy", Congratulations on you. We sill recommend you to live a health life.
+eat clean ,do some work out ,keep health.
+
+2. If the prediction is "Patient", We highly recommend you to consult your doctor as soon as possible.
+The prediction is not 100% accuracy. standard examine must be take to make a confirmed diagnosis.
+
+
